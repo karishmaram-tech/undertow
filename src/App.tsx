@@ -240,30 +240,42 @@ export default function App() {
     useState<RunComparisonResult | null>(null);
   const [countUpMinutes, setCountUpMinutes] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isScorecardLoading, setIsScorecardLoading] = useState(false);
 
   const handleRunScorecard = () => {
-    const results = runComparisonMode(12345);
-    setScorecardData(results);
-    setIsScorecardOpen(true);
+    setIsScorecardLoading(true);
     setCountUpMinutes(0);
 
-    const duration = 1200; // 1.2s count up duration
-    const interval = 25;
-    const steps = duration / interval;
-    const stepVal = results.protectedMinutes / steps;
-    let current = 0;
-    let stepCount = 0;
+    // Timeout of 50ms yields a paint cycle for loading indicator to render before main thread freeze
+    setTimeout(() => {
+      try {
+        const results = runComparisonMode(12345);
+        setScorecardData(results);
+        setIsScorecardOpen(true);
 
-    const timer = setInterval(() => {
-      stepCount++;
-      current += stepVal;
-      if (stepCount >= steps) {
-        clearInterval(timer);
-        setCountUpMinutes(results.protectedMinutes);
-      } else {
-        setCountUpMinutes(parseFloat(current.toFixed(2)));
+        const duration = 1200; // 1.2s count up duration
+        const interval = 25;
+        const steps = duration / interval;
+        const stepVal = results.protectedMinutes / steps;
+        let current = 0;
+        let stepCount = 0;
+
+        const timer = setInterval(() => {
+          stepCount++;
+          current += stepVal;
+          if (stepCount >= steps) {
+            clearInterval(timer);
+            setCountUpMinutes(results.protectedMinutes);
+          } else {
+            setCountUpMinutes(parseFloat(current.toFixed(2)));
+          }
+        }, interval);
+      } catch (err) {
+        console.error('Error running comparative simulation:', err);
+      } finally {
+        setIsScorecardLoading(false);
       }
-    }, interval);
+    }, 50);
   };
 
   const handleConfirmAction = (
@@ -1975,6 +1987,33 @@ export default function App() {
                     NO ACTIVE LOGS FOR SELECTED FILTERS
                   </div>
                 )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Comparative Scorecard Loading State */}
+      <AnimatePresence>
+        {isScorecardLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md pointer-events-auto"
+          >
+            <div className="flex flex-col items-center space-y-4 font-mono text-xs">
+              {/* Spinner */}
+              <div className="relative w-12 h-12 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-4 border-teal-500/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-t-teal-400 animate-spin" />
+              </div>
+              <div className="text-teal-400 font-bold uppercase tracking-wider text-center">
+                Running Comparative Simulation
+              </div>
+              <div className="text-gray-500 text-[10px] text-center max-w-[280px]">
+                Calculating safety envelopes for 2,000 agents over dual
+                85-second evac runs...
               </div>
             </div>
           </motion.div>

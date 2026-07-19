@@ -1,0 +1,48 @@
+{
+  "gateCapacitySpecs": [
+    { "id": "gate-nw", "name": "Gate NW", "capacity": 15 },
+    { "id": "gate-ne", "name": "Gate NE", "capacity": 15 },
+    { "id": "gate-e", "name": "Gate E", "capacity": 15 },
+    { "id": "gate-se", "name": "Gate SE", "capacity": 15 },
+    { "id": "gate-sw", "name": "Gate SW", "capacity": 15 },
+    { "id": "gate-w", "name": "Gate W", "capacity": 15 }
+  ],
+  "operatingThresholds": {
+    "normalDensityLimit": 1.2,
+    "warningDensityThreshold": 1.6,
+    "lockdownDensityThreshold": 2.0,
+    "severeDistressKeywordCount": 3,
+    "closureConditions": [
+      "A lockdown is triggered if a zone density exceeds 2.0 p/m² for over 15 seconds.",
+      "Emergency gate closure is initiated if panic signals indicate fire, weapon, active threat, or severe stampede risk.",
+      "Medical dispatch is requested immediately for active CPR, unconscious persons, or crushing injuries."
+    ]
+  },
+  "incidentPatterns": [
+    {
+      "patternId": "medical_emergency_crush",
+      "keywords": ["crushed", "suffocating", "help", "breathing", "cpr", "médico", "socorro"],
+      "description": "Crowd congestion leading to chest compression and breathing difficulty. Medical team deployment is critical. Grounding keywords: crushed, suffocating, help, breathing, CPR."
+    },
+    {
+      "patternId": "active_panic_stampede",
+      "keywords": ["stampede", "trampled", "running", "panic", "pânico", "correria"],
+      "description": "Sudden egress surge leading to falls and trampling risk. Grounding keywords: stampede, trampled, running, panic, correria, pânico."
+    },
+    {
+      "patternId": "structural_fire_hazard",
+      "keywords": ["fire", "smoke", "burning", "fogo", "fumaça", "fogo", "fumaça"],
+      "description": "Localized smoke or fire detection forcing evacuation. Grounding keywords: fire, smoke, burning, fogo, fumaça."
+    },
+    {
+      "patternId": "hostile_threat",
+      "keywords": ["weapon", "shooter", "gun", "knife", "fight", "arma", "briga", "tiro"],
+      "description": "Physical violence, fights, or presence of weapons requiring tactical response and gate lockouts. Grounding keywords: weapon, shooter, gun, knife, fight, arma, briga."
+    },
+    {
+      "patternId": "general_chatter",
+      "keywords": ["concert", "fun", "cool", "slow", "show", "legal", "devagar", "lotado"],
+      "description": "Standard audience conversations, comments on crowd flow slowness or music. Non-emergency. Grounding keywords: concert, slow, show, legal."
+    }
+  ]
+}

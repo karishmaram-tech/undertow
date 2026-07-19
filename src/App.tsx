@@ -239,6 +239,7 @@ export default function App() {
   const [scorecardData, setScorecardData] =
     useState<RunComparisonResult | null>(null);
   const [countUpMinutes, setCountUpMinutes] = useState(0);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const handleRunScorecard = () => {
     const results = runComparisonMode(12345);
@@ -1098,96 +1099,231 @@ export default function App() {
 
   return (
     <div className="flex flex-col xl:flex-row h-screen w-screen bg-[#0A0A0F] text-[#F3F4F6] font-sans overflow-hidden">
-      {/* Left: Simulation Viewport */}
-      <div className="relative flex-1 flex items-center justify-center bg-[#050508] p-4">
-        <div className="relative w-full h-full max-w-[1200px] max-h-[800px] flex items-center justify-center">
+      {/* Left: Simulation Viewport (Normal document flow, vertically stacked, naturally scrolling) */}
+      <div className="flex-1 overflow-y-auto bg-[#050508] p-6 flex flex-col items-center space-y-6 scrollbar-thin relative">
+        {/* Real-time Telemetry Dashboard Panel */}
+        {snapshot && (
+          <div className="w-full max-w-[1200px] bg-[#0E0E15]/95 border border-[#1E1E2E] p-4 rounded-md font-mono text-xs shadow-lg backdrop-blur-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-shrink-0">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="text-[#2DD4BF] font-extrabold text-sm tracking-wider">
+                SYSTEM TELEMETRY
+              </div>
+              <div className="flex flex-wrap gap-4 text-gray-300">
+                <div>
+                  FPS:{' '}
+                  <span className="text-[#4ADE80] font-bold">
+                    {snapshot.stats.fps}
+                  </span>
+                </div>
+                <div>
+                  Sim Time:{' '}
+                  <span className="text-teal-400 font-bold">
+                    {snapshot.stats.elapsedTime.toFixed(1)}s
+                  </span>
+                </div>
+                <div>
+                  Active Crowd:{' '}
+                  <span className="text-amber-400 font-bold">
+                    {snapshot.stats.activeParticles} / 2000
+                  </span>
+                </div>
+                <div>
+                  Egressed Agents:{' '}
+                  <span className="text-emerald-400 font-bold">
+                    {snapshot.stats.totalEscaped}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-400 text-[10px] border-t md:border-t-0 md:border-l border-gray-800 pt-2 md:pt-0 md:pl-4">
+              {snapshot.zones.map((z) => (
+                <div key={z.id} className="flex space-x-1.5">
+                  <span className="font-semibold">{z.name.split(' ')[0]}:</span>
+                  <span
+                    className={
+                      z.density > 2.0
+                        ? 'text-red-500 font-bold'
+                        : z.density > 1.0
+                          ? 'text-amber-500 font-medium'
+                          : 'text-emerald-400'
+                    }
+                  >
+                    {z.density.toFixed(2)} p/m²
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Breathing Map Canvas Wrapper */}
+        <div className="relative w-full max-w-[1200px] aspect-[3/2] bg-[#0A0A0F] border border-[#1E1E2E] rounded-lg shadow-2xl overflow-hidden cursor-pointer flex items-center justify-center flex-shrink-0">
           <canvas
             ref={canvasRef}
             width={SIM_WIDTH}
             height={SIM_HEIGHT}
             onClick={() => setTargetCamera(CAMERA_PRESETS.overview)}
-            className="w-full h-full object-contain border border-[#1E1E2E] rounded-lg shadow-2xl bg-[#0A0A0F] cursor-pointer"
+            className="w-full h-full object-contain"
           />
           <div
             ref={distortionOverlayRef}
             className="absolute inset-0 pointer-events-none rounded-lg z-10 sensory-distortion-overlay"
           />
+
+          {/* Human Moment Notification Overlay (Top-Right of Map Viewport) */}
+          <AnimatePresence>
+            {currentNotification && !currentNotification.isExiting && (
+              <motion.div
+                initial={{ x: 400, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 400, opacity: 0 }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="absolute top-4 right-4 z-20 w-80 bg-[#12121A]/95 border border-[#1E1E2E] p-3.5 rounded-xl shadow-2xl flex items-start space-x-3 backdrop-blur-md pointer-events-auto font-sans text-left"
+              >
+                {/* App-icon avatar circle */}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-gradient-to-br from-teal-500/20 to-teal-400/5 border border-teal-500/30 text-teal-400 shadow-inner flex-shrink-0">
+                  {currentNotification.initial}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-semibold text-xs text-teal-400 tracking-wide uppercase">
+                      System Alert
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-mono">
+                      {currentNotification.timestamp}
+                    </span>
+                  </div>
+                  <div className="font-bold text-xs text-gray-200">
+                    {currentNotification.name}
+                  </div>
+                  <p className="text-[11px] text-gray-400 leading-relaxed font-mono">
+                    {currentNotification.message}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Real-time Telemetry Overlay */}
-        {snapshot && (
-          <div className="absolute top-8 left-8 bg-[#0A0A0F]/95 border border-[#1E1E2E] p-4 rounded-md font-mono text-xs space-y-1.5 shadow-lg backdrop-blur-sm pointer-events-none">
-            <div className="text-[#2DD4BF] font-bold text-sm mb-1">
-              TELEMETRY
-            </div>
-            <div>
-              FPS:{' '}
-              <span className="text-[#4ADE80] font-bold">
-                {snapshot.stats.fps}
-              </span>
-            </div>
-            <div>
-              Sim Time: <span>{snapshot.stats.elapsedTime.toFixed(1)}s</span>
-            </div>
-            <div>
-              Active Crowd:{' '}
-              <span className="text-amber-400 font-bold">
-                {snapshot.stats.activeParticles} / 2000
-              </span>
-            </div>
-            <div>
-              Egressed Agents:{' '}
-              <span className="text-emerald-400 font-bold">
-                {snapshot.stats.totalEscaped}
-              </span>
-            </div>
-            <div className="h-px bg-gray-800 my-2" />
-            <div className="font-semibold text-gray-400">ZONE DENSITIES:</div>
-            {snapshot.zones.map((z) => (
-              <div key={z.id} className="flex justify-between space-x-6">
-                <span>{z.name.split(' ')[0]}:</span>
-                <span
-                  className={
-                    z.density > 2.0
-                      ? 'text-red-500 font-bold'
-                      : z.density > 1.0
-                        ? 'text-amber-500'
-                        : 'text-emerald-400'
-                  }
-                >
-                  {z.density.toFixed(2)} p/m²
-                </span>
-              </div>
-            ))}
+        {/* Camera Preset Control Bar */}
+        <div className="w-full max-w-[1200px] bg-[#0E0E15]/95 border border-[#1E1E2E] p-3 rounded-lg shadow-lg backdrop-blur-sm flex items-center justify-between font-mono text-xs flex-shrink-0">
+          <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+            CAMERA VIEW PRESETS:
+          </span>
+          <div className="flex space-x-2">
+            <button
+              onClick={() =>
+                setTargetCamera({ ...CAMERA_PRESETS.overview, isManual: true })
+              }
+              className={`px-2.5 py-1 rounded border transition font-bold cursor-pointer ${
+                targetCamera.presetName === 'overview'
+                  ? 'bg-teal-500/10 border-teal-500 text-teal-400 font-bold'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              OVERVIEW
+            </button>
+            <button
+              onClick={() => {
+                setTargetCamera({
+                  x: 600,
+                  y: 400,
+                  zoom: 2.2,
+                  presetName: 'entity-focus',
+                  focusTargetId: 'special-elena',
+                  isManual: true,
+                });
+              }}
+              className={`px-2.5 py-1 rounded border transition font-bold cursor-pointer ${
+                targetCamera.presetName === 'entity-focus' &&
+                targetCamera.focusTargetId === 'special-elena'
+                  ? 'bg-teal-500/10 border-teal-500 text-teal-400 font-bold'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              ELENA
+            </button>
+            <button
+              onClick={() => {
+                setTargetCamera({
+                  x: 600,
+                  y: 400,
+                  zoom: 2.2,
+                  presetName: 'entity-focus',
+                  focusTargetId: 'special-sam',
+                  isManual: true,
+                });
+              }}
+              className={`px-2.5 py-1 rounded border transition font-bold cursor-pointer ${
+                targetCamera.presetName === 'entity-focus' &&
+                targetCamera.focusTargetId === 'special-sam'
+                  ? 'bg-teal-500/10 border-teal-500 text-teal-400 font-bold'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              SAM
+            </button>
+            <button
+              onClick={() => {
+                setTargetCamera({
+                  x: 600,
+                  y: 400,
+                  zoom: 2.2,
+                  presetName: 'entity-focus',
+                  focusTargetId: 'special-maria',
+                  isManual: true,
+                });
+              }}
+              className={`px-2.5 py-1 rounded border transition font-bold cursor-pointer ${
+                targetCamera.presetName === 'entity-focus' &&
+                (targetCamera.focusTargetId === 'special-maria' ||
+                  targetCamera.focusTargetId === 'special-child')
+                  ? 'bg-teal-500/10 border-teal-500 text-teal-400 font-bold'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              MARIA
+            </button>
+            <button
+              onClick={() =>
+                setTargetCamera({ ...CAMERA_PRESETS.aftermath, isManual: true })
+              }
+              className={`px-2.5 py-1 rounded border transition font-bold cursor-pointer ${
+                targetCamera.presetName === 'aftermath'
+                  ? 'bg-teal-500/10 border-teal-500 text-teal-400 font-bold'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              AFTERMATH
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* Operator Console HUD Overlay (Bottom-Left) */}
-        <div className="absolute bottom-8 left-8 w-[420px] bg-[#0E0E15]/95 border border-[#1E1E2E] p-4 rounded-md shadow-2xl backdrop-blur-sm pointer-events-auto flex flex-col max-h-[350px] overflow-y-auto font-mono text-xs">
-          <div className="flex justify-between items-center mb-3">
+        {/* Operator Decision Console (In-flow) */}
+        <div className="w-full max-w-[1200px] bg-[#0E0E15]/95 border border-[#1E1E2E] p-5 rounded-lg shadow-lg backdrop-blur-sm flex flex-col font-mono text-xs flex-shrink-0">
+          <div className="flex justify-between items-center mb-4">
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-              <h2 className="text-xs font-bold text-red-500 tracking-wider uppercase">
+              <h2 className="text-sm font-bold text-red-500 tracking-wider uppercase">
                 Operator Decision Console
               </h2>
             </div>
-            <span className="text-[10px] text-gray-500">
-              {pendingActions.length} PENDING
+            <span className="text-xs bg-red-950/40 border border-red-900/40 text-red-400 px-2 py-0.5 rounded-full font-bold">
+              {pendingActions.length} PENDING ACTION(S)
             </span>
           </div>
 
-          <div className="h-px bg-gray-800 mb-3" />
+          <div className="h-px bg-gray-800 mb-4" />
 
-          {/* Actions List */}
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+          {/* Actions List Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatePresence initial={false}>
               {pendingActions.map((item) => {
-                // Determine severity and colors based on confidence
                 const conf = item.confidence;
                 const ringColor =
                   conf > 85 ? '#EF4444' : conf >= 70 ? '#F59E0B' : '#2DD4BF';
 
-                // Radial SVG Progress Circle calculation
                 const radius = 18;
                 const circumference = 2 * Math.PI * radius;
                 const strokeDashoffset =
@@ -1196,42 +1332,38 @@ export default function App() {
                 return (
                   <motion.div
                     key={item.action.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{
-                      opacity: 0,
-                      x: -20,
-                      transition: { duration: 0.15 },
-                    }}
-                    className="bg-[#151520] border border-[#252538] rounded p-3 flex flex-col space-y-2.5 pulse-border shadow-md"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="border border-[#1E1E2E] bg-[#0B0B10] p-4 rounded-lg flex flex-col justify-between space-y-3"
                   >
-                    {/* Title row with circle score */}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-xs font-bold text-gray-200 uppercase">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <div className="text-red-400 font-bold text-xs uppercase">
                           {item.action.type.replace(/_/g, ' ')}
                         </div>
-                        <div className="text-[10px] text-teal-400 font-semibold mt-0.5">
-                          Target: {item.action.targetId.toUpperCase()}
+                        <div className="text-gray-500 text-[10px]">
+                          Target: {item.action.targetId}
                         </div>
                       </div>
 
-                      {/* Radial Progress indicator */}
-                      <div className="relative flex items-center justify-center w-11 h-11">
-                        <svg className="w-full h-full transform -rotate-90">
-                          {/* Background ring */}
+                      {/* Radial Progress Circle */}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-gray-400 font-bold">
+                          {conf}%
+                        </span>
+                        <svg className="w-10 h-10 transform -rotate-90">
                           <circle
-                            cx="22"
-                            cy="22"
+                            cx="20"
+                            cy="20"
                             r={radius}
                             stroke="#1E1E2E"
                             strokeWidth="3.5"
                             fill="transparent"
                           />
-                          {/* Foreground progress ring */}
                           <circle
-                            cx="22"
-                            cy="22"
+                            cx="20"
+                            cy="20"
                             r={radius}
                             stroke={ringColor}
                             strokeWidth="3.5"
@@ -1239,20 +1371,16 @@ export default function App() {
                             strokeDasharray={circumference}
                             strokeDashoffset={strokeDashoffset}
                             strokeLinecap="round"
+                            className="transition-all duration-300"
                           />
                         </svg>
-                        <span className="absolute text-[9px] font-bold text-gray-200">
-                          {Math.round(conf)}%
-                        </span>
                       </div>
                     </div>
 
-                    {/* Justification sentence */}
                     <p className="text-[10px] text-gray-400 italic leading-relaxed bg-[#0F0F16] p-2 rounded border border-[#1E1E2E]">
                       "{item.justification}"
                     </p>
 
-                    {/* Decision Button Actions */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         onClick={() =>
@@ -1285,139 +1413,13 @@ export default function App() {
             </AnimatePresence>
 
             {pendingActions.length === 0 && (
-              <div className="text-emerald-400 bg-emerald-950/20 border border-emerald-900/40 rounded p-4 text-center text-xs font-semibold flex items-center justify-center space-x-2 py-6">
+              <div className="col-span-1 md:col-span-2 text-emerald-400 bg-emerald-950/20 border border-emerald-900/40 rounded p-4 text-center text-xs font-semibold flex items-center justify-center space-x-2 py-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span>NO PENDING ACTIONS — SYSTEM NOMINAL</span>
               </div>
             )}
           </div>
         </div>
-
-        {/* Camera Preset Control Overlay (Bottom-Right) */}
-        <div className="absolute bottom-8 right-8 bg-[#0E0E15]/95 border border-[#1E1E2E] p-2.5 rounded-md shadow-2xl backdrop-blur-sm pointer-events-auto flex items-center space-x-2 font-mono text-[10px]">
-          <span className="text-gray-500 font-bold mr-1.5 uppercase tracking-wider">
-            CAMERA:
-          </span>
-          <button
-            onClick={() =>
-              setTargetCamera({ ...CAMERA_PRESETS.overview, isManual: true })
-            }
-            className={`px-2 py-1 rounded border transition font-bold cursor-pointer ${
-              targetCamera.presetName === 'overview'
-                ? 'bg-teal-500/10 border-teal-500 text-teal-400'
-                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            OVERVIEW
-          </button>
-          <button
-            onClick={() => {
-              setTargetCamera({
-                x: 600,
-                y: 400,
-                zoom: 2.2,
-                presetName: 'entity-focus',
-                focusTargetId: 'special-elena',
-                isManual: true,
-              });
-            }}
-            className={`px-2 py-1 rounded border transition font-bold cursor-pointer ${
-              targetCamera.presetName === 'entity-focus' &&
-              targetCamera.focusTargetId === 'special-elena'
-                ? 'bg-teal-500/10 border-teal-500 text-teal-400'
-                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            ELENA
-          </button>
-          <button
-            onClick={() => {
-              setTargetCamera({
-                x: 600,
-                y: 400,
-                zoom: 2.2,
-                presetName: 'entity-focus',
-                focusTargetId: 'special-sam',
-                isManual: true,
-              });
-            }}
-            className={`px-2 py-1 rounded border transition font-bold cursor-pointer ${
-              targetCamera.presetName === 'entity-focus' &&
-              targetCamera.focusTargetId === 'special-sam'
-                ? 'bg-teal-500/10 border-teal-500 text-teal-400'
-                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            SAM
-          </button>
-          <button
-            onClick={() => {
-              setTargetCamera({
-                x: 600,
-                y: 400,
-                zoom: 2.2,
-                presetName: 'entity-focus',
-                focusTargetId: 'special-maria',
-                isManual: true,
-              });
-            }}
-            className={`px-2 py-1 rounded border transition font-bold cursor-pointer ${
-              targetCamera.presetName === 'entity-focus' &&
-              (targetCamera.focusTargetId === 'special-maria' ||
-                targetCamera.focusTargetId === 'special-child')
-                ? 'bg-teal-500/10 border-teal-500 text-teal-400'
-                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            MARIA
-          </button>
-          <button
-            onClick={() =>
-              setTargetCamera({ ...CAMERA_PRESETS.aftermath, isManual: true })
-            }
-            className={`px-2 py-1 rounded border transition font-bold cursor-pointer ${
-              targetCamera.presetName === 'aftermath'
-                ? 'bg-teal-500/10 border-teal-500 text-teal-400'
-                : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            AFTERMATH
-          </button>
-        </div>
-
-        {/* Human Moment Notification Overlay (Top-Right) */}
-        <AnimatePresence>
-          {currentNotification && !currentNotification.isExiting && (
-            <motion.div
-              initial={{ x: 400, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="absolute top-8 right-8 z-50 w-80 bg-[#12121A]/95 border border-[#1E1E2E] p-3.5 rounded-xl shadow-2xl flex items-start space-x-3 backdrop-blur-md pointer-events-auto font-sans"
-            >
-              {/* App-icon avatar circle */}
-              <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-gradient-to-br from-teal-500/20 to-teal-400/5 border border-teal-500/30 text-teal-400 shadow-inner flex-shrink-0">
-                {currentNotification.initial}
-              </div>
-              <div className="flex-1 space-y-1">
-                <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-xs text-teal-400 tracking-wide uppercase">
-                    System Alert
-                  </span>
-                  <span className="text-[9px] text-gray-500 font-mono">
-                    {currentNotification.timestamp}
-                  </span>
-                </div>
-                <div className="font-bold text-xs text-gray-200">
-                  {currentNotification.name}
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed font-mono">
-                  {currentNotification.message}
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Right: Control Panel Panel */}
@@ -1434,6 +1436,16 @@ export default function App() {
             </div>
             <div className="flex space-x-1.5">
               <button
+                onClick={() => setIsFocusMode(!isFocusMode)}
+                className={`py-1 px-2.5 text-[9px] font-mono rounded border transition cursor-pointer font-bold ${
+                  isFocusMode
+                    ? 'bg-amber-500/10 border-amber-500/80 text-amber-400'
+                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                FOCUS MODE: {isFocusMode ? 'ON' : 'OFF'}
+              </button>
+              <button
                 onClick={handleRunScorecard}
                 className="py-1 px-2.5 text-[9px] font-mono rounded bg-teal-500/10 border border-teal-500/60 text-[#2DD4BF] hover:bg-teal-500 hover:text-white font-bold transition cursor-pointer"
               >
@@ -1448,62 +1460,72 @@ export default function App() {
             </div>
           </div>
 
-          <div className="h-px bg-gray-800" />
+          <motion.div
+            initial={false}
+            animate={{
+              height: isFocusMode ? 0 : 'auto',
+              opacity: isFocusMode ? 0 : 1,
+            }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            className="overflow-hidden flex flex-col space-y-6"
+          >
+            <div className="h-px bg-gray-800" />
 
-          {/* Crowd-Flow Predictor forecasts */}
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-300 font-mono">
-              1. CROWD-FLOW FORECAST
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {forecasts.map((forecast) => {
-                let riskColor =
-                  'text-emerald-400 bg-emerald-950/40 border-emerald-800';
-                if (forecast.riskLevel === 'critical') {
-                  riskColor =
-                    'text-red-400 bg-red-950/40 border-red-800 font-bold pulse-glow';
-                } else if (forecast.riskLevel === 'high') {
-                  riskColor =
-                    'text-orange-400 bg-orange-950/40 border-orange-800';
-                } else if (forecast.riskLevel === 'medium') {
-                  riskColor =
-                    'text-yellow-400 bg-yellow-950/40 border-yellow-800';
-                }
+            {/* Crowd-Flow Predictor forecasts */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-gray-300 font-mono">
+                1. CROWD-FLOW FORECAST
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {forecasts.map((forecast) => {
+                  let riskColor =
+                    'text-emerald-400 bg-emerald-950/40 border-emerald-800';
+                  if (forecast.riskLevel === 'critical') {
+                    riskColor =
+                      'text-red-400 bg-red-950/40 border-red-800 font-bold pulse-glow';
+                  } else if (forecast.riskLevel === 'high') {
+                    riskColor =
+                      'text-orange-400 bg-orange-950/40 border-orange-800';
+                  } else if (forecast.riskLevel === 'medium') {
+                    riskColor =
+                      'text-yellow-400 bg-yellow-950/40 border-yellow-800';
+                  }
 
-                let etaStr: string;
-                if (forecast.etaToOverloadSeconds === Infinity) {
-                  etaStr = 'STABLE';
-                } else if (forecast.etaToOverloadSeconds === 0) {
-                  etaStr = 'OVERLOADED';
-                } else if (forecast.etaToOverloadSeconds < 0.1) {
-                  etaStr = '< 0.1s';
-                } else {
-                  etaStr = `${forecast.etaToOverloadSeconds.toFixed(1)}s`;
-                }
+                  let etaStr: string;
+                  if (forecast.etaToOverloadSeconds === Infinity) {
+                    etaStr = 'STABLE';
+                  } else if (forecast.etaToOverloadSeconds === 0) {
+                    etaStr = 'OVERLOADED';
+                  } else if (forecast.etaToOverloadSeconds < 0.1) {
+                    etaStr = '< 0.1s';
+                  } else {
+                    etaStr = `${forecast.etaToOverloadSeconds.toFixed(1)}s`;
+                  }
 
-                return (
-                  <div
-                    key={forecast.gateId}
-                    className={`p-2 border rounded font-mono text-[10px] flex flex-col justify-between ${riskColor}`}
-                  >
-                    <div className="font-bold uppercase">
-                      {forecast.gateId.toUpperCase()}
-                    </div>
-                    <div className="mt-1">
-                      Risk:{' '}
-                      <span className="uppercase">{forecast.riskLevel}</span>
-                    </div>
-                    <div>ETA: {etaStr}</div>
-                    {forecast.contributingSignals && (
-                      <div className="text-[8px] opacity-75 mt-1 border-t border-current/10 pt-1 uppercase">
-                        Src: {forecast.contributingSignals.replace(/-/g, ' ')}
+                  return (
+                    <div
+                      key={forecast.gateId}
+                      className={`p-2 border rounded font-mono text-[10px] flex flex-col justify-between ${riskColor}`}
+                    >
+                      <div className="font-bold uppercase">
+                        {forecast.gateId.toUpperCase()}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      <div className="mt-1">
+                        Risk:{' '}
+                        <span className="uppercase">{forecast.riskLevel}</span>
+                      </div>
+                      <div>ETA: {etaStr}</div>
+                      {forecast.contributingSignals && (
+                        <div className="text-[8px] opacity-75 mt-1 border-t border-current/10 pt-1 uppercase">
+                          Src: {forecast.contributingSignals.replace(/-/g, ' ')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </motion.div>
 
           <div className="h-px bg-gray-800" />
 
@@ -1858,95 +1880,106 @@ export default function App() {
         </div>
       </div>
 
-      {/* Far Right: Mission Control Panel (Collapsible) */}
-      {isMissionControlOpen && (
-        <div className="w-full xl:w-[380px] border-t xl:border-t-0 xl:border-l border-[#1E1E2E] bg-[#12121A] p-4 flex flex-col font-mono text-xs h-full overflow-hidden">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-sm font-semibold text-gray-300">
-              MISSION CONTROL LOG
-            </h2>
-            <span className="text-[10px] bg-gray-950 border border-gray-900 text-teal-400 px-2 py-0.5 rounded-full font-bold">
-              {allEvents.length} EVENTS
-            </span>
-          </div>
-
-          {/* Filter toggle checkboxes/buttons */}
-          <div className="flex flex-wrap gap-1 mb-3">
-            {Object.keys(agentFilters).map((agent) => {
-              const active = agentFilters[agent];
-              let activeStyle = '';
-              if (active) {
-                if (agent === 'Crowd-Flow')
-                  activeStyle =
-                    'bg-teal-500/10 border border-teal-500 text-teal-400 font-bold';
-                else if (agent === 'Routing')
-                  activeStyle =
-                    'bg-purple-500/10 border border-purple-500 text-purple-400 font-bold';
-                else if (agent === 'Reunification')
-                  activeStyle =
-                    'bg-emerald-500/10 border border-emerald-500 text-emerald-400 font-bold';
-                else if (agent === 'Panic-Language')
-                  activeStyle =
-                    'bg-amber-500/10 border border-amber-500 text-amber-400 font-bold';
-                else if (agent === 'Verification')
-                  activeStyle =
-                    'bg-red-500/10 border border-red-500 text-red-400 font-bold';
-              } else {
-                activeStyle =
-                  'bg-gray-950 border border-gray-900 text-gray-600';
-              }
-              return (
-                <button
-                  key={agent}
-                  onClick={() =>
-                    setAgentFilters((prev) => ({
-                      ...prev,
-                      [agent]: !prev[agent],
-                    }))
-                  }
-                  className={`px-2 py-0.5 text-[8px] rounded transition cursor-pointer ${activeStyle}`}
-                >
-                  {agent.toUpperCase()}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-px bg-gray-950 mb-3" />
-
-          {/* Logs List Container */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
-            <AnimatePresence initial={false}>
-              {visibleEvents.map((event) => (
-                <motion.div
-                  key={`${event.timestamp}_${event.agentName}_${event.description}`}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15, ease: 'easeOut' }}
-                  className={`py-1.5 border-b border-gray-950 last:border-0 overflow-hidden leading-normal ${getLogEntryColor(
-                    event.agentName
-                  )}`}
-                >
-                  <span className="text-[10px] opacity-40 mr-1.5">
-                    [{event.timestamp.toFixed(1)}s]
-                  </span>
-                  <span className="font-bold mr-1.5">
-                    [{event.agentName.toUpperCase()}]
-                  </span>
-                  <span>{event.description}</span>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {visibleEvents.length === 0 && (
-              <div className="text-gray-600 text-center py-8">
-                NO ACTIVE LOGS FOR SELECTED FILTERS
+      {/* Far Right: Mission Control Panel (Collapsible with smooth animation) */}
+      <AnimatePresence>
+        {isMissionControlOpen && !isFocusMode && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 380, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            className="w-full xl:w-[380px] border-t xl:border-t-0 xl:border-l border-[#1E1E2E] bg-[#12121A] flex flex-col font-mono text-xs h-full overflow-hidden flex-shrink-0"
+          >
+            {/* Fixed width content wrapper to prevent wrapping during width collapse */}
+            <div className="w-[380px] p-4 flex flex-col h-full overflow-hidden flex-shrink-0">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                <h2 className="text-sm font-semibold text-gray-300">
+                  MISSION CONTROL LOG
+                </h2>
+                <span className="text-[10px] bg-gray-950 border border-gray-900 text-teal-400 px-2 py-0.5 rounded-full font-bold">
+                  {allEvents.length} EVENTS
+                </span>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {/* Filter toggle checkboxes/buttons */}
+              <div className="flex flex-wrap gap-1 mb-3 flex-shrink-0">
+                {Object.keys(agentFilters).map((agent) => {
+                  const active = agentFilters[agent];
+                  let activeStyle = '';
+                  if (active) {
+                    if (agent === 'Crowd-Flow')
+                      activeStyle =
+                        'bg-teal-500/10 border border-teal-500 text-teal-400 font-bold';
+                    else if (agent === 'Routing')
+                      activeStyle =
+                        'bg-purple-500/10 border border-purple-500 text-purple-400 font-bold';
+                    else if (agent === 'Reunification')
+                      activeStyle =
+                        'bg-emerald-500/10 border border-emerald-500 text-emerald-400 font-bold';
+                    else if (agent === 'Panic-Language')
+                      activeStyle =
+                        'bg-amber-500/10 border border-amber-500 text-amber-400 font-bold';
+                    else if (agent === 'Verification')
+                      activeStyle =
+                        'bg-red-500/10 border border-red-500 text-red-400 font-bold';
+                  } else {
+                    activeStyle =
+                      'bg-gray-950 border border-gray-900 text-gray-600';
+                  }
+                  return (
+                    <button
+                      key={agent}
+                      onClick={() =>
+                        setAgentFilters((prev) => ({
+                          ...prev,
+                          [agent]: !prev[agent],
+                        }))
+                      }
+                      className={`px-2 py-0.5 text-[8px] rounded transition cursor-pointer ${activeStyle}`}
+                    >
+                      {agent.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="h-px bg-gray-950 mb-3 flex-shrink-0" />
+
+              {/* Logs List Container */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
+                <AnimatePresence initial={false}>
+                  {visibleEvents.map((event) => (
+                    <motion.div
+                      key={`${event.timestamp}_${event.agentName}_${event.description}`}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className={`py-1.5 border-b border-gray-950 last:border-0 overflow-hidden leading-normal ${getLogEntryColor(
+                        event.agentName
+                      )}`}
+                    >
+                      <span className="text-[10px] opacity-40 mr-1.5">
+                        [{event.timestamp.toFixed(1)}s]
+                      </span>
+                      <span className="font-bold mr-1.5">
+                        [{event.agentName.toUpperCase()}]
+                      </span>
+                      <span>{event.description}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {visibleEvents.length === 0 && (
+                  <div className="text-gray-600 text-center py-8">
+                    NO ACTIVE LOGS FOR SELECTED FILTERS
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Comparative Scorecard Modal */}
       <AnimatePresence>

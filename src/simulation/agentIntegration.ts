@@ -109,8 +109,14 @@ function findZoneIdForPosition(
   world: SimulationWorld
 ): string {
   for (const zone of world.zones.values()) {
-    if (pointInPolygon(x, y, zone.points)) {
-      return zone.id;
+    const minX = zone.minX ?? -Infinity;
+    const maxX = zone.maxX ?? Infinity;
+    const minY = zone.minY ?? -Infinity;
+    const maxY = zone.maxY ?? Infinity;
+    if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+      if (pointInPolygon(x, y, zone.points)) {
+        return zone.id;
+      }
     }
   }
   return 'zone-south-seats'; // Default fallback
@@ -813,8 +819,15 @@ export async function runComparisonMode(
   seed: number = 12345,
   disableAgentsRunB: boolean = false
 ): Promise<RunComparisonResult> {
+  if (typeof window !== 'undefined') {
+    (window as unknown as Record<string, unknown>).isScorecardRunning = true;
+  } else if (typeof globalThis !== 'undefined') {
+    (globalThis as unknown as Record<string, unknown>).isScorecardRunning =
+      true;
+  }
+
   const dt = 0.02;
-  const duration = 85; // 85 simulated seconds
+  const duration = 45; // reduced from 85 to 45 simulated seconds for fast demo load
   const totalSteps = duration / dt;
   const batchSize = 150; // yield back to browser every 150 steps
 
@@ -837,8 +850,8 @@ export async function runComparisonMode(
   };
 
   for (let step = 0; step < totalSteps; step++) {
-    // Continuous spawn up to 2000 active particles
-    if (runAWorld.particles.filter((p) => p.isActive).length < 2000) {
+    // Continuous spawn up to 1500 active particles (calibrated for 45s run)
+    if (runAWorld.particles.filter((p) => p.isActive).length < 1500) {
       spawnGeneralCrowd(15, runAWorld);
     }
 
@@ -888,8 +901,8 @@ export async function runComparisonMode(
   const peakDensityTimes: Record<string, number> = {};
 
   for (let step = 0; step < totalSteps; step++) {
-    // Continuous spawn up to 2000 active particles
-    if (runBWorld.particles.filter((p) => p.isActive).length < 2000) {
+    // Continuous spawn up to 1500 active particles (calibrated for 45s run)
+    if (runBWorld.particles.filter((p) => p.isActive).length < 1500) {
       spawnGeneralCrowd(15, runBWorld);
     }
 
@@ -965,6 +978,13 @@ export async function runComparisonMode(
     } else {
       detailMessage = `All vulnerable entities egressed safely under predictive agent guidance.`;
     }
+  }
+
+  if (typeof window !== 'undefined') {
+    (window as unknown as Record<string, unknown>).isScorecardRunning = false;
+  } else if (typeof globalThis !== 'undefined') {
+    (globalThis as unknown as Record<string, unknown>).isScorecardRunning =
+      false;
   }
 
   return {

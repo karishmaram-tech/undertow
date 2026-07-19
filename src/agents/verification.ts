@@ -90,6 +90,16 @@ async function fetchJustification(
   action: ProposedAction,
   confidence: number
 ): Promise<string> {
+  if (
+    (typeof window !== 'undefined' &&
+      (window as unknown as Record<string, unknown>).isScorecardRunning) ||
+    (typeof globalThis !== 'undefined' &&
+      (globalThis as unknown as Record<string, unknown>).isScorecardRunning)
+  ) {
+    const signalsText = action.triggeringSignals.join(', ');
+    return `[Scorecard Justification] Action ${action.type.toUpperCase()} on ${action.targetId} is queued with ${confidence.toFixed(1)}% confidence, prompted by triggers: [${signalsText}].`;
+  }
+
   const apiKey =
     (typeof process !== 'undefined' && process.env.VITE_GROQ_API_KEY) ||
     (typeof window !== 'undefined' &&

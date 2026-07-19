@@ -49,6 +49,10 @@ export interface Zone {
   area: number; // in square meters
   currentDensity: number; // particles per square meter
   particleCount: number;
+  minX?: number;
+  maxX?: number;
+  minY?: number;
+  maxY?: number;
 }
 
 export interface Wall {

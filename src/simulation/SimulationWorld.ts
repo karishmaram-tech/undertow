@@ -93,11 +93,26 @@ export class SimulationWorld {
 
   addZone(zone: Omit<Zone, 'area' | 'currentDensity' | 'particleCount'>) {
     const area = this.calculatePolygonArea(zone.points);
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    zone.points.forEach((p) => {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    });
+
     this.zones.set(zone.id, {
       ...zone,
       area,
       currentDensity: 0,
       particleCount: 0,
+      minX,
+      maxX,
+      minY,
+      maxY,
     });
   }
 
@@ -578,10 +593,20 @@ export class SimulationWorld {
     ) {
       this.zones.forEach((zone) => {
         let count = 0;
+        const minX = zone.minX ?? -Infinity;
+        const maxX = zone.maxX ?? Infinity;
+        const minY = zone.minY ?? -Infinity;
+        const maxY = zone.maxY ?? Infinity;
+
         for (let i = 0; i < activeParticles.length; i++) {
           const p = activeParticles[i];
-          if (p.isActive && this.pointInPolygon(p.x, p.y, zone.points)) {
-            count++;
+          if (p.isActive) {
+            // Bounding box pre-filter shortcut
+            if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
+              if (this.pointInPolygon(p.x, p.y, zone.points)) {
+                count++;
+              }
+            }
           }
         }
         zone.particleCount = count;

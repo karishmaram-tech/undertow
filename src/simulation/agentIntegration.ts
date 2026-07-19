@@ -809,13 +809,14 @@ export interface RunComparisonResult {
   protectedMinutes: number;
 }
 
-export function runComparisonMode(
+export async function runComparisonMode(
   seed: number = 12345,
   disableAgentsRunB: boolean = false
-): RunComparisonResult {
+): Promise<RunComparisonResult> {
   const dt = 0.02;
   const duration = 85; // 85 simulated seconds
   const totalSteps = duration / dt;
+  const batchSize = 150; // yield back to browser every 150 steps
 
   // Run A: Headless, agents disabled
   const runAWorld = new SimulationWorld(1200, 800);
@@ -855,7 +856,14 @@ export function runComparisonMode(
         }
       }
     });
+
+    if (step > 0 && step % batchSize === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
+
+  // Final yield before Run B
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   // Run B: Headless, agents enabled (unless disableAgentsRunB is true)
   const runBWorld = new SimulationWorld(1200, 800);
@@ -913,6 +921,10 @@ export function runComparisonMode(
         }
       }
     });
+
+    if (step > 0 && step % batchSize === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
 
   const runBLogs = getAgentLogs();

@@ -247,9 +247,9 @@ export default function App() {
     setCountUpMinutes(0);
 
     // Timeout of 50ms yields a paint cycle for loading indicator to render before main thread freeze
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const results = runComparisonMode(12345);
+        const results = await runComparisonMode(12345);
         setScorecardData(results);
         setIsScorecardOpen(true);
 

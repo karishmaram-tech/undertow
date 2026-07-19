@@ -1,11 +1,11 @@
 import { runComparisonMode } from './agentIntegration';
 
-function runSanityCheckTest() {
+async function runSanityCheckTest() {
   console.log(
     '--- TEST 1: Dual-Run Comparison with disabled agents in BOTH runs ---'
   );
   const seed = 12345;
-  const resultsDisabled = runComparisonMode(seed, true);
+  const resultsDisabled = await runComparisonMode(seed, true);
 
   console.log(`Protected Minutes: ${resultsDisabled.protectedMinutes}`);
   console.log('Exposure times in Run A:', resultsDisabled.runA.exposure);
@@ -28,7 +28,7 @@ function runSanityCheckTest() {
   console.log(
     '\n--- TEST 2: Real Comparison (Unassisted Run A vs Guided Run B) ---'
   );
-  const resultsNormal = runComparisonMode(seed, false);
+  const resultsNormal = await runComparisonMode(seed, false);
   console.log(`Protected Minutes: ${resultsNormal.protectedMinutes} min`);
   console.log('Run A (Unassisted) Exposure Times:');
   Object.keys(resultsNormal.runA.exposure).forEach((k) => {
